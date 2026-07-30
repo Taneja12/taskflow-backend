@@ -1,6 +1,7 @@
 package com.deepanshu.backend.task.service;
 
 import com.deepanshu.backend.common.exception.TaskNotFoundException;
+import com.deepanshu.backend.common.service.HelperService;
 import com.deepanshu.backend.task.dto.AddTaskRequest;
 import com.deepanshu.backend.common.dto.PageResponse;
 import com.deepanshu.backend.task.dto.TaskResponse;
@@ -21,10 +22,12 @@ public class TaskServiceImpl implements TaskService{
 
     private final TaskRepo taskRepo;
     private final UserRepo userRepo;
+    private final HelperService helperService;
 
-    public TaskServiceImpl(TaskRepo taskRepo, UserRepo userRepo) {
+    public TaskServiceImpl(TaskRepo taskRepo, UserRepo userRepo, HelperService helperService) {
         this.taskRepo = taskRepo;
         this.userRepo = userRepo;
+        this.helperService = helperService;
     }
 
     private User getCurrentUser() {
@@ -58,19 +61,7 @@ public class TaskServiceImpl implements TaskService{
     public PageResponse<TaskResponse> getTasks(TaskStatus status, String search, Pageable pageable) {
         search = (search == null) ? "" : search.trim();
         Page<TaskResponse> page = taskRepo.getTasks(getCurrentUser().getId(),status, search, pageable).map(this::mapToResponse);
-        return setPageResponse(page);
-    }
-
-    private PageResponse<TaskResponse> setPageResponse(Page<TaskResponse> page) {
-        return new PageResponse<>(
-                page.getContent(),
-                page.getNumber(),
-                page.getSize(),
-                page.getTotalElements(),
-                page.getTotalPages(),
-                page.isFirst(),
-                page.isLast()
-        );
+        return helperService.setPageResponse(page);
     }
 
     @Override
