@@ -343,7 +343,7 @@ along with centralized exception handling.
 ## Clone Repository
 
 ```bash
-git clone https://github.com/yourusername/taskflow-backend.git
+git clone https://github.com/taneja12/taskflow-backend.git
 ```
 
 ---
@@ -366,7 +366,7 @@ application.properties
 
 ```properties
 spring.datasource.url=jdbc:postgresql://localhost:5432/taskflow
-spring.datasource.username=your_username
+spring.datasource.taneja12=your_username
 spring.datasource.password=your_password
 
 jwt.secret=your_secret_key
