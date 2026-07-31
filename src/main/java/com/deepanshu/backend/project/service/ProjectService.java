@@ -3,6 +3,7 @@ package com.deepanshu.backend.project.service;
 import com.deepanshu.backend.common.dto.PageResponse;
 import com.deepanshu.backend.project.dto.request.AddProjectRequest;
 import com.deepanshu.backend.project.dto.response.ProjectResponse;
+import com.deepanshu.backend.project.dto.response.ProjectStatisticsResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
 
@@ -20,4 +21,6 @@ public interface ProjectService {
     ProjectResponse getProjectById(UUID projectId);
 
     void deleteProject(UUID projectId);
+
+    ProjectStatisticsResponse getProjectStatistics(UUID projectId);
 }

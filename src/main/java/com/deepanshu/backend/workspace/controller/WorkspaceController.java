@@ -1,6 +1,7 @@
 package com.deepanshu.backend.workspace.controller;
 
 import com.deepanshu.backend.common.dto.PageResponse;
+import com.deepanshu.backend.workspace.dto.response.WorkspaceStatisticsResponse;
 import com.deepanshu.backend.workspace.dto.request.AddWorkSpaceRequest;
 import com.deepanshu.backend.workspace.dto.response.WorkspaceResponse;
 import com.deepanshu.backend.workspace.service.WorkspaceService;
@@ -62,5 +63,13 @@ public class WorkspaceController {
     {
         service.deleteWorkspace(workSpaceId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{workspaceId}/dashboard")
+    @Tag(name = "Dashboard")
+    @Operation(summary = "Workspace Statistics")
+    public ResponseEntity<WorkspaceStatisticsResponse> workspaceStatistics(@PathVariable UUID workspaceId)
+    {
+        return ResponseEntity.ok(service.getWorkspaceStatistics(workspaceId));
     }
 }

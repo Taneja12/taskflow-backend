@@ -2,7 +2,9 @@ package com.deepanshu.backend.task.repo;
 
 import com.deepanshu.backend.board.entity.Board;
 import com.deepanshu.backend.task.entity.Task;
+import com.deepanshu.backend.task.entity.TaskPriority;
 import com.deepanshu.backend.task.entity.TaskStatus;
+import com.deepanshu.backend.task.projection.TaskStatusCount;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -40,4 +42,77 @@ public interface TaskRepo extends JpaRepository<Task, UUID> {
     Optional<Task> findByIdAndBoardProjectWorkspaceOwnerId(UUID boardId, UUID userId);
 
     Pageable board(Board board);
+
+    @Query("""
+        select count(t) from Task t
+        WHERE t.board.project.workspace.id = :workspaceId
+    """)
+    long countByWorkspaceId(UUID workspaceId);
+
+
+//    @Query("""
+//        select count(t) from Task t
+//        where t.board.project.workspace.id = :workspaceId
+//        and t.status = :taskStatus
+//    """)
+//    long countTaskByStatus(UUID workspaceId, TaskStatus taskStatus);
+
+    @Query("""
+    SELECT
+        t.status AS status,
+        COUNT(t) AS total
+    FROM Task t
+    WHERE t.board.project.workspace.id = :workspaceId
+    GROUP BY t.status
+    """)
+    List<TaskStatusCount> countTasksByStatus(UUID workspaceId);
+
+    @Query("""
+        select count(t) from Task t
+        where t.board.project.workspace.id = :workspaceId
+        and t.priority = :taskPriority
+    """)
+    long countByPriority(UUID workspaceId, TaskPriority taskPriority);
+
+    @Query("""
+        select t.status AS status, count(t) AS total from Task t
+            where t.board.project.id = :projectId
+                GROUP BY t.status
+    """)
+    List<TaskStatusCount> countTasksByStatusAndProjectId(UUID projectId);
+
+    @Query("""
+        select t.status AS status, count(t) AS total from Task t
+            where t.board.id = :boardId
+                GROUP BY t.status
+    """)
+    List<TaskStatusCount> countTasksByStatusAndBoardId(UUID boardId);
+
+    @Query("""
+        SELECT count(t) from Task t
+            where t.board.id = :boardId
+    """)
+    long countByBoardId(UUID boardId);
+
+    @Query("""
+        SELECT count(t) from Task t
+            where t.board.id = :boardId
+                AND t.priority = :taskPriority
+    """)
+    long countByPriorityAndBoardId(TaskPriority taskPriority, UUID boardId);
+
+
+    @Query("""
+        select count(t) from Task t
+            where t.board.id = :boardId
+                AND t.dueDate = current_date
+    """)
+    long countDueToday(UUID boardId);
+
+    @Query("""
+        select count(t) from Task t
+            where t.board.id = :boardId
+                AND t.dueDate < current_date
+    """)
+    long countOverdue(UUID boardId);
 }

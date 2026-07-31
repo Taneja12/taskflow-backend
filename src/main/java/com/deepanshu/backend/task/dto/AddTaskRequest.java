@@ -30,7 +30,7 @@ public class AddTaskRequest {
     )
     private String description;
 
-    private TaskPriority taskPriority;
+    private TaskPriority priority;
 
     private LocalDate dueDate;
 

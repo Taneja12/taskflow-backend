@@ -3,6 +3,7 @@ package com.deepanshu.backend.board.service;
 
 import com.deepanshu.backend.board.dto.request.AddBoardRequest;
 import com.deepanshu.backend.board.dto.response.BoardResponse;
+import com.deepanshu.backend.board.dto.response.BoardStatisticsResponse;
 import com.deepanshu.backend.common.dto.PageResponse;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
@@ -19,4 +20,6 @@ public interface BoardService {
     BoardResponse updateBoard(@Valid AddBoardRequest request, UUID boardId);
 
     void deleteBoard( UUID boardId) ;
+
+    BoardStatisticsResponse getBoardStatistics(UUID boardId);
 }

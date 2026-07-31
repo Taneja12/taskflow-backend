@@ -3,6 +3,7 @@ package com.deepanshu.backend.project.controller;
 import com.deepanshu.backend.common.dto.PageResponse;
 import com.deepanshu.backend.project.dto.request.AddProjectRequest;
 import com.deepanshu.backend.project.dto.response.ProjectResponse;
+import com.deepanshu.backend.project.dto.response.ProjectStatisticsResponse;
 import com.deepanshu.backend.project.service.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -72,6 +73,14 @@ public class ProjectController {
     {
         projectService.deleteProject(projectId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/projects/{projectId}/dashboard")
+    @Tag(name = "Dashboard")
+    @Operation(summary = "Project Statistics")
+    public ResponseEntity<ProjectStatisticsResponse> projectStatistics(@PathVariable UUID projectId)
+    {
+        return ResponseEntity.ok(projectService.getProjectStatistics(projectId));
     }
 
 }

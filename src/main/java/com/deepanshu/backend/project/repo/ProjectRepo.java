@@ -21,10 +21,16 @@ public interface ProjectRepo extends JpaRepository<Project, UUID> {
 
     @Query("""
         select p from Project p
-            where p.workspace.id = :workspaceId
-                AND p.workspace.owner.id = :id
+        where p.workspace.id = :workspaceId
+        AND p.workspace.owner.id = :id
     """)
     Page<Project> findByWorkspaceIdAndOwnerId(UUID workspaceId, UUID id, Pageable pageable);
 
     Page<Project> findByWorkspaceOwnerId(UUID id, Pageable pageable);
+
+    @Query("""
+        select COUNT(p) from Project p
+        where p.workspace.id = :workspaceId
+    """)
+    long countByWorkspaceId(UUID workspaceId);
 }

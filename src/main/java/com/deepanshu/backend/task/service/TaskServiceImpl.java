@@ -74,7 +74,7 @@ public class TaskServiceImpl implements TaskService{
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
         task.setStatus(TaskStatus.TODO);
-        task.setPriority(request.getTaskPriority()==null ? TaskPriority.LOW : request.getTaskPriority());
+        task.setPriority(request.getPriority()==null ? TaskPriority.LOW : request.getPriority());
         task.setBoard(board);
         task.setDueDate(request.getDueDate());
         return mapToResponse(taskRepo.save(task));
@@ -96,7 +96,7 @@ public class TaskServiceImpl implements TaskService{
         Task task = findOwnedTask(taskId);
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
-        task.setPriority(request.getTaskPriority());
+        task.setPriority(request.getPriority());
         task.setDueDate(request.getDueDate());
         return mapToResponse(taskRepo.save(task));
     }

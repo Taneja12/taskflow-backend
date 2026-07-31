@@ -2,8 +2,10 @@ package com.deepanshu.backend.board.controller;
 
 import com.deepanshu.backend.board.dto.request.AddBoardRequest;
 import com.deepanshu.backend.board.dto.response.BoardResponse;
+import com.deepanshu.backend.board.dto.response.BoardStatisticsResponse;
 import com.deepanshu.backend.board.service.BoardService;
 import com.deepanshu.backend.common.dto.PageResponse;
+import com.deepanshu.backend.project.dto.response.ProjectStatisticsResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -65,4 +67,13 @@ public class BoardController {
         service.deleteBoard(boardId);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/boards/{boardId}/dashboard")
+    @Tag(name = "Dashboard")
+    @Operation(summary = "Board Statistics")
+    public ResponseEntity<BoardStatisticsResponse> boardStatistics(@PathVariable UUID boardId)
+    {
+        return ResponseEntity.ok(service.getBoardStatistics(boardId));
+    }
+
 }
