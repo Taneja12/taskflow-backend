@@ -1,11 +1,15 @@
 package com.deepanshu.backend.task.service;
 
+import com.deepanshu.backend.board.entity.Board;
+import com.deepanshu.backend.board.repo.BoardRepo;
+import com.deepanshu.backend.common.exception.BoardNotFoundException;
 import com.deepanshu.backend.common.exception.TaskNotFoundException;
 import com.deepanshu.backend.common.service.HelperService;
 import com.deepanshu.backend.task.dto.AddTaskRequest;
 import com.deepanshu.backend.common.dto.PageResponse;
 import com.deepanshu.backend.task.dto.TaskResponse;
 import com.deepanshu.backend.task.entity.Task;
+import com.deepanshu.backend.task.entity.TaskPriority;
 import com.deepanshu.backend.task.entity.TaskStatus;
 import com.deepanshu.backend.task.repo.TaskRepo;
 import com.deepanshu.backend.user.entity.User;
@@ -21,23 +25,13 @@ import java.util.UUID;
 public class TaskServiceImpl implements TaskService{
 
     private final TaskRepo taskRepo;
-    private final UserRepo userRepo;
+    private final BoardRepo boardRepo;
     private final HelperService helperService;
 
-    public TaskServiceImpl(TaskRepo taskRepo, UserRepo userRepo, HelperService helperService) {
+    public TaskServiceImpl(TaskRepo taskRepo, BoardRepo boardRepo, HelperService helperService) {
         this.taskRepo = taskRepo;
-        this.userRepo = userRepo;
+        this.boardRepo = boardRepo;
         this.helperService = helperService;
-    }
-
-    private User getCurrentUser() {
-        Authentication authentication =
-                SecurityContextHolder.getContext().getAuthentication();
-
-        String email = authentication.getName();
-
-        return userRepo.findByEmail(email)
-                .orElseThrow();
     }
 
     private TaskResponse mapToResponse(Task task) {
@@ -45,58 +39,80 @@ public class TaskServiceImpl implements TaskService{
                 task.getId(),
                 task.getTitle(),
                 task.getDescription(),
-                task.getStatus()
+                task.getStatus(),
+                task.getPriority(),
+                task.getDueDate(),
+                task.getBoard().getId(),
+                task.getBoard().getName()
         );
     }
 
-    private Task getUserTask(UUID taskId) {
-        return taskRepo.findByIdAndUserId(
+    private Task findOwnedTask(UUID taskId) {
+        return taskRepo.findByIdAndBoardProjectWorkspaceOwnerId(
                 taskId,
-                getCurrentUser().getId()
+                helperService.getCurrentUser().getId()
         ).orElseThrow(() ->
                 new TaskNotFoundException("Task not found"));
     }
 
+    private Board findOwnedBoard(UUID boardId) {
+        return boardRepo.findByIdAndProjectWorkspaceOwnerId(boardId, helperService.getCurrentUser().getId())
+                .orElseThrow(() -> new BoardNotFoundException("Board not found"));
+    }
+
     @Override
-    public PageResponse<TaskResponse> getTasks(TaskStatus status, String search, Pageable pageable) {
+    public PageResponse<TaskResponse> getTasks(TaskStatus status, String search, UUID boardId, Pageable pageable) {
         search = (search == null) ? "" : search.trim();
-        Page<TaskResponse> page = taskRepo.getTasks(getCurrentUser().getId(),status, search, pageable).map(this::mapToResponse);
+        Page<TaskResponse> page = taskRepo.getTasks(helperService.getCurrentUser().getId(), status, search, boardId, pageable).map(this::mapToResponse);
         return helperService.setPageResponse(page);
     }
 
     @Override
-    public TaskResponse addTask(AddTaskRequest request) {
+    public TaskResponse addTask(AddTaskRequest request, UUID boardId) {
+        Board board = findOwnedBoard(boardId);
         Task task = new Task();
-        task.setUser(getCurrentUser());
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
         task.setStatus(TaskStatus.TODO);
+        task.setPriority(request.getTaskPriority()==null ? TaskPriority.LOW : request.getTaskPriority());
+        task.setBoard(board);
+        task.setDueDate(request.getDueDate());
         return mapToResponse(taskRepo.save(task));
     }
 
     @Override
     public TaskResponse getTaskById(UUID taskId) {
-        Task task = getUserTask(taskId);
+        Task task = findOwnedTask(taskId);
         return mapToResponse(task);
     }
 
     @Override
     public void deleteTaskById(UUID taskId) {
-        taskRepo.delete(getUserTask(taskId));
+        taskRepo.delete(findOwnedTask(taskId));
     }
 
     @Override
     public TaskResponse updateTask(UUID taskId, AddTaskRequest request) {
-        Task task = getUserTask(taskId);
+        Task task = findOwnedTask(taskId);
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
+        task.setPriority(request.getTaskPriority());
+        task.setDueDate(request.getDueDate());
         return mapToResponse(taskRepo.save(task));
     }
 
     @Override
     public TaskResponse updateTaskStatus(UUID taskId, TaskStatus status) {
-        Task task = getUserTask(taskId);
+        Task task = findOwnedTask(taskId);
         task.setStatus(status);
+        return mapToResponse(taskRepo.save(task));
+    }
+
+    @Override
+    public TaskResponse updateBoard(UUID taskId, UUID boardId) {
+        Task task = findOwnedTask(taskId);
+        Board board = findOwnedBoard(boardId);
+        task.setBoard(board);
         return mapToResponse(taskRepo.save(task));
     }
 }

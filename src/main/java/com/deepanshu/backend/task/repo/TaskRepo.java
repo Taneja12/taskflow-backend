@@ -1,5 +1,6 @@
 package com.deepanshu.backend.task.repo;
 
+import com.deepanshu.backend.board.entity.Board;
 import com.deepanshu.backend.task.entity.Task;
 import com.deepanshu.backend.task.entity.TaskStatus;
 import org.springframework.data.domain.Page;
@@ -15,12 +16,11 @@ import java.util.UUID;
 @Repository
 public interface TaskRepo extends JpaRepository<Task, UUID> {
 
-    Optional<Task> findByIdAndUserId(UUID taskId, UUID userId);
-
     @Query("""
         SELECT t
         FROM Task t
-        WHERE t.user.id = :userId
+        WHERE t.board.project.workspace.owner.id = :userId
+        AND t.board.id = :boardId
         AND (:status IS NULL OR t.status = :status)
         AND (
             :search = ''
@@ -32,7 +32,12 @@ public interface TaskRepo extends JpaRepository<Task, UUID> {
             UUID userId,
             TaskStatus status,
             String search,
+            UUID boardId,
             Pageable pageable
     );
 
+
+    Optional<Task> findByIdAndBoardProjectWorkspaceOwnerId(UUID boardId, UUID userId);
+
+    Pageable board(Board board);
 }

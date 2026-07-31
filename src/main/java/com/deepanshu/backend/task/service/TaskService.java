@@ -10,9 +10,9 @@ import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 
 public interface TaskService {
-    PageResponse<TaskResponse> getTasks(TaskStatus status, String search, Pageable pageable);
+    PageResponse<TaskResponse> getTasks(TaskStatus status, String search, UUID boardId, Pageable pageable);
 
-    TaskResponse addTask(AddTaskRequest request);
+    TaskResponse addTask(AddTaskRequest request, UUID boardId);
 
     TaskResponse getTaskById(UUID taskId);
 
@@ -21,4 +21,6 @@ public interface TaskService {
     TaskResponse updateTask(UUID taskId, @Valid AddTaskRequest request);
 
     TaskResponse updateTaskStatus(UUID taskId, TaskStatus status);
+
+    TaskResponse updateBoard(UUID taskId,  UUID boardId);
 }

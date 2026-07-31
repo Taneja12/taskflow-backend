@@ -1,18 +1,17 @@
 package com.deepanshu.backend.task.entity;
 
-import com.deepanshu.backend.user.entity.User;
+import com.deepanshu.backend.board.entity.Board;
+import com.deepanshu.backend.common.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Data;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Data
 @Entity
 @Table(name = "tasks")
-public class Task {
+public class Task extends BaseEntity {
 
     @Id
     @GeneratedValue
@@ -24,13 +23,12 @@ public class Task {
     @Enumerated(EnumType.STRING)
     private TaskStatus status;
 
-    @CreationTimestamp
-    private LocalDateTime createdAt;
+    @Enumerated(EnumType.STRING)
+    private TaskPriority priority;
 
-    @UpdateTimestamp
-    private LocalDateTime updatedAt;
+    private LocalDate dueDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
-    private User user;
+    @JoinColumn(name = "board_id")
+    private Board board;
 }
