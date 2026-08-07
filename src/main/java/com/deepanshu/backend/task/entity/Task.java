@@ -2,6 +2,7 @@ package com.deepanshu.backend.task.entity;
 
 import com.deepanshu.backend.board.entity.Board;
 import com.deepanshu.backend.common.entity.BaseEntity;
+import com.deepanshu.backend.workspaceMember.entity.WorkspaceMember;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -32,6 +33,8 @@ public class Task extends BaseEntity {
     @JoinColumn(name = "board_id")
     private Board board;
 
-
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_member_id")
+    private WorkspaceMember assignedMember;
 
 }

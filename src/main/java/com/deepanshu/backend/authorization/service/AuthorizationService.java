@@ -111,4 +111,8 @@ public class AuthorizationService {
         return task;
     }
 
+    public WorkspaceMember requireAssignableMember(UUID memberId, UUID workspaceId){
+        return workspaceMemberRepo.findByIdAndWorkspaceId(memberId, workspaceId).orElseThrow(()-> new ResourceNotFoundException("Member not found"));
+    }
+
 }

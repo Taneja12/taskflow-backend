@@ -7,6 +7,7 @@ import com.deepanshu.backend.common.exception.MemberAlreadyExistsException;
 import com.deepanshu.backend.common.exception.ResourceNotFoundException;
 import com.deepanshu.backend.common.permission.Permissions;
 import com.deepanshu.backend.common.service.HelperService;
+import com.deepanshu.backend.task.repo.TaskRepo;
 import com.deepanshu.backend.user.entity.User;
 import com.deepanshu.backend.user.repo.UserRepo;
 import com.deepanshu.backend.workspaceMember.dto.AddWorkspaceMemberRequest;
@@ -28,12 +29,14 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService{
 
     private final WorkspaceMemberRepo repo;
     private final UserRepo userRepo;
+    private final TaskRepo taskRepo;
     private final AuthorizationService authorizationService;
     private final HelperService helperService;
 
-    public WorkspaceMemberServiceImpl(WorkspaceMemberRepo repo, UserRepo userRepo, AuthorizationService authorizationService, HelperService helperService) {
+    public WorkspaceMemberServiceImpl(WorkspaceMemberRepo repo, UserRepo userRepo, TaskRepo taskRepo, AuthorizationService authorizationService, HelperService helperService) {
         this.repo = repo;
         this.userRepo = userRepo;
+        this.taskRepo = taskRepo;
         this.authorizationService = authorizationService;
         this.helperService = helperService;
     }
@@ -102,6 +105,7 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService{
         return mapToResponse(repo.save(workspaceMember));
     }
 
+    @Transactional
     @Override
     public void removeWorkspaceMember(UUID workspaceId, UUID memberId) {
         WorkspaceMember currentMember = authorizationService.requireWorkspaceMemberPermission(workspaceId, Permissions.WORKSPACE_WRITE);

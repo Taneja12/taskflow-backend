@@ -12,23 +12,24 @@ import com.deepanshu.backend.task.entity.Task;
 import com.deepanshu.backend.task.entity.TaskPriority;
 import com.deepanshu.backend.task.entity.TaskStatus;
 import com.deepanshu.backend.task.repo.TaskRepo;
-import com.deepanshu.backend.workspaceMember.entity.WorkspaceRole;
+import com.deepanshu.backend.workspaceMember.entity.WorkspaceMember;
+import com.deepanshu.backend.workspaceMember.repo.WorkspaceMemberRepo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.security.Permission;
 import java.util.UUID;
 
 @Service
 public class TaskServiceImpl implements TaskService{
 
     private final TaskRepo taskRepo;
+    private final WorkspaceMemberRepo workspaceMemberRepo;
     private final AuthorizationService authorizationService;
     private final HelperService helperService;
 
-    public TaskServiceImpl(TaskRepo taskRepo, AuthorizationService authorizationService, HelperService helperService) {
+    public TaskServiceImpl(TaskRepo taskRepo,WorkspaceMemberRepo workspaceMemberRepo, AuthorizationService authorizationService, HelperService helperService) {
         this.taskRepo = taskRepo;
+        this.workspaceMemberRepo = workspaceMemberRepo;
         this.authorizationService = authorizationService;
         this.helperService = helperService;
     }
@@ -41,12 +42,16 @@ public class TaskServiceImpl implements TaskService{
                 task.getStatus(),
                 task.getPriority(),
                 task.getDueDate(),
+                task.getAssignedMember() != null? task.getAssignedMember().getId(): null,
+                task.getAssignedMember() != null? task.getAssignedMember().getUser().getFullName(): null,
+                task.getAssignedMember() != null? task.getAssignedMember().getUser().getProfileImageUrl() : null,
                 task.getBoard().getId(),
                 task.getBoard().getName(),
                 task.getCreatedAt(),
                 task.getUpdatedAt()
         );
     }
+
 
     @Override
     public PageResponse<TaskResponse> getTasks(TaskStatus status, TaskPriority priority, String search, UUID boardId, Pageable pageable) {
@@ -59,11 +64,17 @@ public class TaskServiceImpl implements TaskService{
     @Override
     public TaskResponse addTask(AddTaskRequest request, UUID boardId) {
         Board board = authorizationService.requireBoardPermission(boardId, Permissions.TASK_EDIT);
+        WorkspaceMember assignedMember  = null;
+        if(request.getAssignedMemberId()!=null)
+        {
+            assignedMember  = authorizationService.requireAssignableMember(request.getAssignedMemberId(),board.getProject().getWorkspace().getId());
+        }
         Task task = new Task();
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
         task.setStatus(TaskStatus.TODO);
-        task.setPriority(request.getPriority()==null ? TaskPriority.LOW : request.getPriority());
+        task.setPriority(request.getPriority());
+        task.setAssignedMember(assignedMember );
         task.setBoard(board);
         task.setDueDate(request.getDueDate());
         return mapToResponse(taskRepo.save(task));
@@ -83,10 +94,16 @@ public class TaskServiceImpl implements TaskService{
     @Override
     public TaskResponse updateTask(UUID taskId, AddTaskRequest request) {
         Task task = authorizationService.requireTaskPermission(taskId, Permissions.TASK_EDIT);
+        WorkspaceMember assignedMember  = null;
+        if(request.getAssignedMemberId()!=null)
+        {
+            assignedMember  = authorizationService.requireAssignableMember(request.getAssignedMemberId(), task.getBoard().getProject().getWorkspace().getId());
+        }
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
         task.setPriority(request.getPriority());
         task.setDueDate(request.getDueDate());
+        task.setAssignedMember(assignedMember);
         return mapToResponse(taskRepo.save(task));
     }
 
@@ -100,7 +117,7 @@ public class TaskServiceImpl implements TaskService{
     @Override
     public TaskResponse updateBoard(UUID taskId, UUID boardId) {
         Task task = authorizationService.requireTaskPermission(taskId, Permissions.WORKSPACE_WRITE);
-        Board board = authorizationService.requireBoard(boardId);
+        Board board = authorizationService.requireBoardPermission(boardId, Permissions.WORKSPACE_WRITE);
         if(!task.getBoard().getProject().getWorkspace().getId().equals( board.getProject().getWorkspace().getId()))
         {
             throw new InvalidOperationException("Task cannot be moved to another workspace.");
