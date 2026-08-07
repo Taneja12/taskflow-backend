@@ -33,4 +33,15 @@ public interface ProjectRepo extends JpaRepository<Project, UUID> {
         where p.workspace.id = :workspaceId
     """)
     long countByWorkspaceId(UUID workspaceId);
+
+    Page<Project> findByWorkspaceId(UUID workspaceId, Pageable pageable);
+
+    @Query("""
+        SELECT p
+        FROM Project p
+        JOIN WorkspaceMember wm
+            ON wm.workspace.id = p.workspace.id
+        WHERE wm.user.id = :userId
+    """)
+    Page<Project> findAccessibleProjects(UUID userId, Pageable pageable);
 }

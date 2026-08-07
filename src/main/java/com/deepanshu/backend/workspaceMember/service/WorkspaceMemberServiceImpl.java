@@ -5,6 +5,7 @@ import com.deepanshu.backend.common.dto.PageResponse;
 import com.deepanshu.backend.common.exception.InvalidOperationException;
 import com.deepanshu.backend.common.exception.MemberAlreadyExistsException;
 import com.deepanshu.backend.common.exception.ResourceNotFoundException;
+import com.deepanshu.backend.common.permission.Permissions;
 import com.deepanshu.backend.common.service.HelperService;
 import com.deepanshu.backend.user.entity.User;
 import com.deepanshu.backend.user.repo.UserRepo;
@@ -67,7 +68,7 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService{
         }
     }
 
-    private void validateRoleModification( WorkspaceMember currentMember, WorkspaceMember target, WorkspaceRole newRole ){
+    private void validateRoleModification( WorkspaceRole newRole ){
         if (newRole== WorkspaceRole.OWNER) {
             throw new InvalidOperationException(
                     "Owner role cannot be assigned."
@@ -90,7 +91,7 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService{
                     "Owner role cannot be assigned."
             );
         }
-        WorkspaceMember currentMember = authorizationService.requireWorkspacePermission(workspaceId, WorkspaceRole.OWNER, WorkspaceRole.ADMIN);
+        WorkspaceMember currentMember = authorizationService.requireWorkspaceMemberPermission(workspaceId, Permissions.WORKSPACE_WRITE);
         if(repo.existsByWorkspaceIdAndUserEmail(workspaceId, request.getEmail())) throw new MemberAlreadyExistsException("Workspace member with the same email already exists");
         User user = userRepo.findByEmail(request.getEmail()).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         WorkspaceMember workspaceMember = new WorkspaceMember();
@@ -103,7 +104,7 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService{
 
     @Override
     public void removeWorkspaceMember(UUID workspaceId, UUID memberId) {
-        WorkspaceMember currentMember = authorizationService.requireWorkspacePermission(workspaceId, WorkspaceRole.OWNER, WorkspaceRole.ADMIN);
+        WorkspaceMember currentMember = authorizationService.requireWorkspaceMemberPermission(workspaceId, Permissions.WORKSPACE_WRITE);
         WorkspaceMember target  = repo.findByIdAndWorkspaceId(memberId, workspaceId).orElseThrow(() -> new ResourceNotFoundException("Member not found"));
         validateMemberRemoval(currentMember, target);
         repo.delete(target);
@@ -111,13 +112,13 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService{
 
     @Override
     public WorkspaceMemberResponse updateMemberRole(UUID workspaceId, UUID memberId, UpdateMemberRoleRequest request) {
-        WorkspaceMember currentMember = authorizationService.requireWorkspacePermission(workspaceId, WorkspaceRole.OWNER);
-        WorkspaceMember target = repo.findByIdAndWorkspaceId(memberId, workspaceId).orElseThrow(() -> new ResourceNotFoundException("Member not found"));
+        WorkspaceMember workspaceMember = authorizationService.requireWorkspaceMemberPermission(workspaceId, Permissions.OWNER_ONLY);
+        WorkspaceMember target = repo.findByIdAndWorkspaceId(memberId, workspaceMember.getWorkspace().getId()).orElseThrow(() -> new ResourceNotFoundException("Member not found"));
         if(request.getRole()==target.getRole())
         {
             throw new InvalidOperationException("Member already has this role.");
         }
-        validateRoleModification(currentMember,target, request.getRole());
+        validateRoleModification(request.getRole());
         target.setRole(request.getRole());
         return mapToResponse(repo.save(target));
     }

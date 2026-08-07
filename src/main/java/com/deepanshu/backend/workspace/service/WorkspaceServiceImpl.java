@@ -1,5 +1,6 @@
 package com.deepanshu.backend.workspace.service;
 
+import com.deepanshu.backend.authorization.service.AuthorizationService;
 import com.deepanshu.backend.board.repo.BoardRepo;
 import com.deepanshu.backend.common.dto.PageResponse;
 import com.deepanshu.backend.common.exception.WorkSpaceNotFoundException;
@@ -34,16 +35,19 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final BoardRepo boardRepo;
     private final TaskRepo taskRepo;
     private final WorkspaceMemberRepo workspaceMemberRepo;
+    private final AuthorizationService authorizationService;
     private final HelperService helperService;
 
     public WorkspaceServiceImpl(WorkspaceRepo repo, ProjectRepo projectRepo,
                                 BoardRepo boardRepo, TaskRepo taskRepo, WorkspaceMemberRepo workspaceMemberRepo,
+                                AuthorizationService authorizationService,
                                 HelperService helperService) {
         this.repo = repo;
         this.projectRepo = projectRepo;
         this.boardRepo = boardRepo;
         this.taskRepo = taskRepo;
         this.workspaceMemberRepo = workspaceMemberRepo;
+        this.authorizationService = authorizationService;
         this.helperService = helperService;
     }
 
@@ -57,10 +61,6 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         );
     }
 
-    private Workspace getUserWorkspace(UUID workspaceId) {
-        return repo.findByIdAndOwnerId(workspaceId, helperService.getCurrentUser().getId())
-                .orElseThrow();
-    }
 
     @Override
     public PageResponse<WorkspaceResponse> getWorkspaces(Pageable pageable) {
@@ -72,12 +72,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     public WorkspaceResponse getWorkSpaceById(UUID workspaceId) {
-        return mapToResponse(getUserWorkspace(workspaceId));
+        return mapToResponse(authorizationService.requireWorkspace(workspaceId));
     }
 
     @Override
     public WorkspaceResponse updateWorkSpace(UUID workspaceId, AddWorkSpaceRequest request) {
-        Workspace workspace = getUserWorkspace(workspaceId);
+        Workspace workspace = authorizationService.requireWorkspacePermission(workspaceId, WorkspaceRole.OWNER);
         workspace.setDescription(request.getDescription());
         workspace.setName(request.getName());
         return mapToResponse(repo.save(workspace));
@@ -101,17 +101,17 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     @Override
     public void deleteWorkspace(UUID workspaceId) {
-        repo.delete(getUserWorkspace(workspaceId));
+        repo.delete(authorizationService.requireWorkspacePermission(workspaceId, WorkspaceRole.OWNER));
     }
 
     @Override
     public WorkspaceStatisticsResponse getWorkspaceStatistics(UUID workspaceId) {
-        getUserWorkspace(workspaceId);
-        Map<TaskStatus, Long> statusCounts =  taskRepo.countTasksByStatus(workspaceId)
+        Workspace workspace = authorizationService.requireWorkspace(workspaceId);
+        Map<TaskStatus, Long> statusCounts =  taskRepo.countTasksByStatus(workspace.getId())
                 .stream().collect(Collectors.toMap(
-                TaskStatusCount::getStatus,
-                TaskStatusCount::getTotal
-        ));
+                        TaskStatusCount::getStatus,
+                        TaskStatusCount::getTotal
+                ));
 
         return new WorkspaceStatisticsResponse(
                 workspaceMemberRepo.countWorkspaceMemberByWorkspaceId(workspaceId),

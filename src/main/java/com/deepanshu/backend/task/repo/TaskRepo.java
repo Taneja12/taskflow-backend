@@ -12,7 +12,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -21,8 +20,7 @@ public interface TaskRepo extends JpaRepository<Task, UUID> {
     @Query("""
         SELECT t
         FROM Task t
-        WHERE t.board.project.workspace.owner.id = :userId
-        AND t.board.id = :boardId
+        WHERE t.board.id = :boardId
         AND (:status IS NULL OR t.status = :status)
         AND (:priority IS NULL OR t.priority = :priority)
         AND (
@@ -32,7 +30,6 @@ public interface TaskRepo extends JpaRepository<Task, UUID> {
         )
     """)
     Page<Task> getTasks(
-            UUID userId,
             TaskStatus status,
             TaskPriority priority,
             String search,
@@ -40,8 +37,6 @@ public interface TaskRepo extends JpaRepository<Task, UUID> {
             Pageable pageable
     );
 
-
-    Optional<Task> findByIdAndBoardProjectWorkspaceOwnerId(UUID boardId, UUID userId);
 
     Pageable board(Board board);
 
@@ -51,13 +46,6 @@ public interface TaskRepo extends JpaRepository<Task, UUID> {
     """)
     long countByWorkspaceId(UUID workspaceId);
 
-
-//    @Query("""
-//        select count(t) from Task t
-//        where t.board.project.workspace.id = :workspaceId
-//        and t.status = :taskStatus
-//    """)
-//    long countTaskByStatus(UUID workspaceId, TaskStatus taskStatus);
 
     @Query("""
     SELECT
