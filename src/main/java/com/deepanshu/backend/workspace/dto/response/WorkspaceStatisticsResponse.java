@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class WorkspaceStatisticsResponse {
 
+    private long totalMembers;
     private long totalProjects;
     private long totalBoards;
     private long totalTasks;

@@ -11,7 +11,5 @@ import org.springframework.beans.factory.annotation.Value;
 public class AuthResponse {
 
     private String message;
-
-    @Value("${jwt.secret}")
     private String token;
 }

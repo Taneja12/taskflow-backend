@@ -24,6 +24,7 @@ public interface TaskRepo extends JpaRepository<Task, UUID> {
         WHERE t.board.project.workspace.owner.id = :userId
         AND t.board.id = :boardId
         AND (:status IS NULL OR t.status = :status)
+        AND (:priority IS NULL OR t.priority = :priority)
         AND (
             :search = ''
             OR LOWER(t.title) LIKE LOWER(CONCAT('%', :search, '%'))
@@ -33,6 +34,7 @@ public interface TaskRepo extends JpaRepository<Task, UUID> {
     Page<Task> getTasks(
             UUID userId,
             TaskStatus status,
+            TaskPriority priority,
             String search,
             UUID boardId,
             Pageable pageable

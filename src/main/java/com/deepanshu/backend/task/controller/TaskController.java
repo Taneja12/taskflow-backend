@@ -5,6 +5,7 @@ import com.deepanshu.backend.common.dto.PageResponse;
 import com.deepanshu.backend.task.dto.TaskResponse;
 import com.deepanshu.backend.task.dto.UpdateTaskBoard;
 import com.deepanshu.backend.task.dto.UpdateTaskStatus;
+import com.deepanshu.backend.task.entity.TaskPriority;
 import com.deepanshu.backend.task.entity.TaskStatus;
 import com.deepanshu.backend.task.service.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,9 +34,9 @@ public class TaskController {
 
     @GetMapping("/{boardId}/tasks")
     @Operation(summary = "Get all tasks")
-    public ResponseEntity<PageResponse<TaskResponse>> getTasks(@RequestParam(required = false) TaskStatus status, @RequestParam(required = false) String search, @PathVariable UUID boardId, @ParameterObject Pageable pageable)
+    public ResponseEntity<PageResponse<TaskResponse>> getTasks(@RequestParam(required = false) TaskStatus status, @RequestParam(required = false) TaskPriority priority, @RequestParam(required = false) String search, @PathVariable UUID boardId, @ParameterObject Pageable pageable)
     {
-        return new ResponseEntity<>(service.getTasks(status, search, boardId, pageable), HttpStatus.OK);
+        return new ResponseEntity<>(service.getTasks(status, priority, search, boardId, pageable), HttpStatus.OK);
     }
 
     @GetMapping("/tasks/{taskId}")

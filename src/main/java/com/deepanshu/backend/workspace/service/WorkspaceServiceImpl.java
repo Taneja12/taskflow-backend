@@ -14,6 +14,10 @@ import com.deepanshu.backend.workspace.dto.request.AddWorkSpaceRequest;
 import com.deepanshu.backend.workspace.dto.response.WorkspaceResponse;
 import com.deepanshu.backend.workspace.entity.Workspace;
 import com.deepanshu.backend.workspace.repo.WorkspaceRepo;
+import com.deepanshu.backend.workspaceMember.entity.WorkspaceMember;
+import com.deepanshu.backend.workspaceMember.entity.WorkspaceRole;
+import com.deepanshu.backend.workspaceMember.repo.WorkspaceMemberRepo;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,15 +33,17 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final ProjectRepo projectRepo;
     private final BoardRepo boardRepo;
     private final TaskRepo taskRepo;
+    private final WorkspaceMemberRepo workspaceMemberRepo;
     private final HelperService helperService;
 
     public WorkspaceServiceImpl(WorkspaceRepo repo, ProjectRepo projectRepo,
-                                BoardRepo boardRepo, TaskRepo taskRepo,
+                                BoardRepo boardRepo, TaskRepo taskRepo, WorkspaceMemberRepo workspaceMemberRepo,
                                 HelperService helperService) {
         this.repo = repo;
         this.projectRepo = projectRepo;
         this.boardRepo = boardRepo;
         this.taskRepo = taskRepo;
+        this.workspaceMemberRepo = workspaceMemberRepo;
         this.helperService = helperService;
     }
 
@@ -53,12 +59,14 @@ public class WorkspaceServiceImpl implements WorkspaceService {
 
     private Workspace getUserWorkspace(UUID workspaceId) {
         return repo.findByIdAndOwnerId(workspaceId, helperService.getCurrentUser().getId())
-                .orElseThrow(() -> new WorkSpaceNotFoundException("Workspace not found"));
+                .orElseThrow();
     }
 
     @Override
     public PageResponse<WorkspaceResponse> getWorkspaces(Pageable pageable) {
-        Page<WorkspaceResponse> page = repo.findByOwnerId(helperService.getCurrentUser().getId(),pageable).map(this::mapToResponse);
+        Page<WorkspaceResponse> page =
+                workspaceMemberRepo.findByUserId(helperService.getCurrentUser().getId(), pageable)
+                        .map(member -> mapToResponse(member.getWorkspace()));
         return helperService.setPageResponse(page);
     }
 
@@ -75,13 +83,20 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         return mapToResponse(repo.save(workspace));
     }
 
+    @Transactional
     @Override
     public WorkspaceResponse createWorkspace(AddWorkSpaceRequest request) {
         Workspace workspace = new Workspace();
         workspace.setOwner(helperService.getCurrentUser());
         workspace.setName(request.getName());
         workspace.setDescription(request.getDescription());
-        return mapToResponse(repo.save(workspace));
+        workspace = repo.save(workspace);
+        WorkspaceMember workspaceMember = new WorkspaceMember();
+        workspaceMember.setWorkspace(workspace);
+        workspaceMember.setUser(helperService.getCurrentUser());
+        workspaceMember.setRole(WorkspaceRole.OWNER);
+        workspaceMemberRepo.save(workspaceMember);
+        return mapToResponse(workspace);
     }
 
     @Override
@@ -99,6 +114,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         ));
 
         return new WorkspaceStatisticsResponse(
+                workspaceMemberRepo.countWorkspaceMemberByWorkspaceId(workspaceId),
                 projectRepo.countByWorkspaceId(workspaceId),
                 boardRepo.countByWorkspaceId(workspaceId),
                 taskRepo.countByWorkspaceId(workspaceId),

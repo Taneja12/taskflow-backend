@@ -3,6 +3,7 @@ package com.deepanshu.backend.task.service;
 import com.deepanshu.backend.task.dto.AddTaskRequest;
 import com.deepanshu.backend.common.dto.PageResponse;
 import com.deepanshu.backend.task.dto.TaskResponse;
+import com.deepanshu.backend.task.entity.TaskPriority;
 import com.deepanshu.backend.task.entity.TaskStatus;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Pageable;
@@ -10,7 +11,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 
 public interface TaskService {
-    PageResponse<TaskResponse> getTasks(TaskStatus status, String search, UUID boardId, Pageable pageable);
+    PageResponse<TaskResponse> getTasks(TaskStatus status, TaskPriority priority, String search, UUID boardId, Pageable pageable);
 
     TaskResponse addTask(AddTaskRequest request, UUID boardId);
 

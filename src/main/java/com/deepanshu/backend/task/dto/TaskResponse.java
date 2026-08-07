@@ -24,5 +24,7 @@ public class TaskResponse {
     private LocalDate dueDate;
     private UUID boardId;
     private String boardName;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
 }

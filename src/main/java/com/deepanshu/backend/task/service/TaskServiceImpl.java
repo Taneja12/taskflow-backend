@@ -43,7 +43,9 @@ public class TaskServiceImpl implements TaskService{
                 task.getPriority(),
                 task.getDueDate(),
                 task.getBoard().getId(),
-                task.getBoard().getName()
+                task.getBoard().getName(),
+                task.getCreatedAt(),
+                task.getUpdatedAt()
         );
     }
 
@@ -61,9 +63,9 @@ public class TaskServiceImpl implements TaskService{
     }
 
     @Override
-    public PageResponse<TaskResponse> getTasks(TaskStatus status, String search, UUID boardId, Pageable pageable) {
+    public PageResponse<TaskResponse> getTasks(TaskStatus status, TaskPriority priority, String search, UUID boardId, Pageable pageable) {
         search = (search == null) ? "" : search.trim();
-        Page<TaskResponse> page = taskRepo.getTasks(helperService.getCurrentUser().getId(), status, search, boardId, pageable).map(this::mapToResponse);
+        Page<TaskResponse> page = taskRepo.getTasks(helperService.getCurrentUser().getId(), status, priority, search, boardId, pageable).map(this::mapToResponse);
         return helperService.setPageResponse(page);
     }
 

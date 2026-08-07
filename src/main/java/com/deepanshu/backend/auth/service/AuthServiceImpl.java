@@ -3,6 +3,7 @@ package com.deepanshu.backend.auth.service;
 import com.deepanshu.backend.auth.dto.AuthResponse;
 import com.deepanshu.backend.auth.dto.LoginRequest;
 import com.deepanshu.backend.auth.dto.RegisterRequest;
+import com.deepanshu.backend.common.exception.AccountBlockedException;
 import com.deepanshu.backend.common.exception.EmailAlreadyExistsException;
 import com.deepanshu.backend.common.exception.InvalidCredentialsException;
 import com.deepanshu.backend.common.security.JwtService;
@@ -30,7 +31,7 @@ public class AuthServiceImpl implements AuthService{
 
     @Override
     public AuthResponse register(RegisterRequest request) {
-        Optional<User> existingUser  = userRepo.findByEmail(request.getEmail());
+        Optional<User> existingUser  = userRepo.findByEmail(request.getEmail().toLowerCase());
 
         if(existingUser.isPresent())
         {
@@ -39,7 +40,7 @@ public class AuthServiceImpl implements AuthService{
 
         User user = new User();
         user.setFullName(request.getFullName());
-        user.setEmail(request.getEmail());
+        user.setEmail(request.getEmail().toLowerCase());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setStatus(AccountStatus.ACTIVE);
 
@@ -53,7 +54,13 @@ public class AuthServiceImpl implements AuthService{
 
     @Override
     public AuthResponse login(LoginRequest request) {
-        User user = userRepo.findByEmail(request.getEmail()).orElseThrow(()-> new InvalidCredentialsException("Invalid email or password"));
+        User user = userRepo.findByEmail(request.getEmail().toLowerCase()).orElseThrow(()-> new InvalidCredentialsException("Invalid email or password"));
+
+        if(user.getStatus()==AccountStatus.BLOCKED)
+        {
+            throw new AccountBlockedException("Your account is blocked");
+        }
+
         boolean matches = passwordEncoder.matches(request.getPassword(), user.getPassword());
         if(!matches)
         {
