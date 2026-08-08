@@ -31,6 +31,7 @@ public class AuthServiceImpl implements AuthService{
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenService = refreshTokenService;
+
     }
 
     @Override
@@ -80,10 +81,13 @@ public class AuthServiceImpl implements AuthService{
     }
 
     @Override
-    public AuthResponse refresh(String refreshToken) {
+    public LoginResult refresh(String refreshToken) {
         RefreshToken verifiedToken = refreshTokenService.verifyRefreshToken(refreshToken);
+        refreshTokenService.revokeToken(refreshToken);
+        RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(verifiedToken.getUser());
         String accessToken = jwtService.generateToken(verifiedToken.getUser());
-        return new AuthResponse("Access token",accessToken);
+        AuthResponse response = new AuthResponse("Access token",accessToken);
+        return new LoginResult(response, newRefreshToken.getToken());
     }
 
     @Override

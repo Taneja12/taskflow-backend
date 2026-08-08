@@ -81,7 +81,19 @@ public class AuthController {
         if (refreshToken == null || refreshToken.isBlank()) {
             throw new InvalidRefreshTokenException("Refresh token is missing");
         }
-        return ResponseEntity.ok().body(authService.refresh(refreshToken));
+        LoginResult result = authService.refresh(refreshToken);
+
+        ResponseCookie refreshCookie = ResponseCookie
+                .from(refreshCookieName, result.refreshToken())
+                .httpOnly(refreshCookieHttpOnly)
+                .secure(refreshCookieSecure)
+                .sameSite(refreshCookieSameSite)
+                .path(refreshCookiePath)
+                .maxAge(Duration.ofSeconds(refreshCookieMaxAge))
+                .build();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString()).body(result.authResponse());
     }
 
     @PostMapping("/logout")
