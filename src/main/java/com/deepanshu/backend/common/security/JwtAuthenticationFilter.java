@@ -1,6 +1,5 @@
 package com.deepanshu.backend.common.security;
 
-import com.deepanshu.backend.user.repo.UserRepo;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -36,21 +35,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return ;
         }
         String token = header.substring(7);
-        String email = null;
+        String email;
         try {
             email = jwtService.extractClaims(token).getSubject();
         }
         catch (JwtException e) {
+            SecurityContextHolder.clearContext();
             filterChain.doFilter(request, response);
             return;
         }
-        UserDetails userDetails = null;
+        UserDetails userDetails;
         if (email != null &&
                 SecurityContextHolder.getContext().getAuthentication() == null) {
             userDetails = userDetailsService.loadUserByUsername(email);
             if(!jwtService.isTokenValid(token, userDetails )){
+                SecurityContextHolder.clearContext();
                 filterChain.doFilter(request, response);
-                return ;
+                return;
             }
             Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
             SecurityContextHolder
