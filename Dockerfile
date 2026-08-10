@@ -1,8 +1,18 @@
-FROM eclipse-temurin:21-jdk
+# Build stage
+FROM eclipse-temurin:21-jdk AS build
 
 WORKDIR /app
 
-COPY target/backend-0.0.1-SNAPSHOT.jar app.jar
+COPY . .
+
+RUN ./mvnw clean package -DskipTests
+
+# Runtime stage
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+
+COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 
