@@ -1,5 +1,8 @@
 package com.deepanshu.backend.task.service;
 
+import com.deepanshu.backend.activitylog.entity.ActivityAction;
+import com.deepanshu.backend.activitylog.entity.ActivityEntityType;
+import com.deepanshu.backend.activitylog.service.ActivityLogService;
 import com.deepanshu.backend.authorization.service.AuthorizationService;
 import com.deepanshu.backend.board.entity.Board;
 import com.deepanshu.backend.common.exception.InvalidOperationException;
@@ -13,7 +16,7 @@ import com.deepanshu.backend.task.entity.TaskPriority;
 import com.deepanshu.backend.task.entity.TaskStatus;
 import com.deepanshu.backend.task.repo.TaskRepo;
 import com.deepanshu.backend.workspaceMember.entity.WorkspaceMember;
-import com.deepanshu.backend.workspaceMember.repo.WorkspaceMemberRepo;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -23,14 +26,14 @@ import java.util.UUID;
 public class TaskServiceImpl implements TaskService{
 
     private final TaskRepo taskRepo;
-    private final WorkspaceMemberRepo workspaceMemberRepo;
     private final AuthorizationService authorizationService;
+    private final ActivityLogService activityLogService;
     private final HelperService helperService;
 
-    public TaskServiceImpl(TaskRepo taskRepo,WorkspaceMemberRepo workspaceMemberRepo, AuthorizationService authorizationService, HelperService helperService) {
+    public TaskServiceImpl(TaskRepo taskRepo, AuthorizationService authorizationService, ActivityLogService activityLogService, HelperService helperService) {
         this.taskRepo = taskRepo;
-        this.workspaceMemberRepo = workspaceMemberRepo;
         this.authorizationService = authorizationService;
+        this.activityLogService = activityLogService;
         this.helperService = helperService;
     }
 
@@ -61,6 +64,7 @@ public class TaskServiceImpl implements TaskService{
         return helperService.setPageResponse(page);
     }
 
+    @Transactional
     @Override
     public TaskResponse addTask(AddTaskRequest request, UUID boardId) {
         Board board = authorizationService.requireBoardPermission(boardId, Permissions.TASK_EDIT);
@@ -77,7 +81,34 @@ public class TaskServiceImpl implements TaskService{
         task.setAssignedMember(assignedMember );
         task.setBoard(board);
         task.setDueDate(request.getDueDate());
-        return mapToResponse(taskRepo.save(task));
+        task = taskRepo.save(task);
+
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                board.getProject().getWorkspace(),
+                ActivityAction.TASK_CREATED,
+                ActivityEntityType.TASK,
+                task.getId(),
+                helperService.getCurrentUser().getEmail() + " created task "+ task.getTitle()
+        );
+
+        if(request.getAssignedMemberId()!=null)
+        {
+            activityLogService.log(
+                    helperService.getCurrentUser(),
+                    board.getProject().getWorkspace(),
+                    ActivityAction.TASK_ASSIGNED,
+                    ActivityEntityType.TASK,
+                    task.getId(),
+                    helperService.getCurrentUser().getEmail()
+                            + " assigned task "
+                            + task.getTitle()
+                            + " to "
+                            + task.getAssignedMember().getUser().getEmail()
+            );
+        }
+
+        return mapToResponse(task);
     }
 
     @Override
@@ -86,15 +117,28 @@ public class TaskServiceImpl implements TaskService{
         return mapToResponse(task);
     }
 
+    @Transactional
     @Override
     public void deleteTaskById(UUID taskId) {
-        taskRepo.delete(authorizationService.requireTaskPermission(taskId, Permissions.WORKSPACE_WRITE));
+        Task task = authorizationService.requireTaskPermission(taskId, Permissions.WORKSPACE_WRITE);
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                task.getBoard().getProject().getWorkspace(),
+                ActivityAction.TASK_DELETED,
+                ActivityEntityType.TASK,
+                task.getId(),
+                helperService.getCurrentUser().getEmail() + " deleted task "+ task.getTitle()
+        );
+        taskRepo.delete(task);
+
     }
 
+    @Transactional
     @Override
     public TaskResponse updateTask(UUID taskId, AddTaskRequest request) {
         Task task = authorizationService.requireTaskPermission(taskId, Permissions.TASK_EDIT);
-        WorkspaceMember assignedMember  = null;
+        WorkspaceMember oldMember = task.getAssignedMember();
+        WorkspaceMember assignedMember=null;
         if(request.getAssignedMemberId()!=null)
         {
             assignedMember  = authorizationService.requireAssignableMember(request.getAssignedMemberId(), task.getBoard().getProject().getWorkspace().getId());
@@ -104,25 +148,126 @@ public class TaskServiceImpl implements TaskService{
         task.setPriority(request.getPriority());
         task.setDueDate(request.getDueDate());
         task.setAssignedMember(assignedMember);
-        return mapToResponse(taskRepo.save(task));
+        task = taskRepo.save(task);
+
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                task.getBoard().getProject().getWorkspace(),
+                ActivityAction.TASK_UPDATED,
+                ActivityEntityType.TASK,
+                task.getId(),
+                helperService.getCurrentUser().getEmail() + " updated task "+ task.getTitle()
+        );
+
+        if(oldMember==null && task.getAssignedMember()!=null)
+        {
+            activityLogService.log(
+                    helperService.getCurrentUser(),
+                    task.getBoard().getProject().getWorkspace(),
+                    ActivityAction.TASK_ASSIGNED,
+                    ActivityEntityType.TASK,
+                    task.getId(),
+                    helperService.getCurrentUser().getEmail()
+                            + " assigned task "
+                            + task.getTitle()
+                            + " to "
+                            + task.getAssignedMember().getUser().getEmail()
+            );
+        }
+
+        if(oldMember!=null && task.getAssignedMember()==null)
+        {
+            activityLogService.log(
+                    helperService.getCurrentUser(),
+                    task.getBoard().getProject().getWorkspace(),
+                    ActivityAction.TASK_UNASSIGNED,
+                    ActivityEntityType.TASK,
+                    task.getId(),
+                    helperService.getCurrentUser().getEmail()
+                            + " unassigned task "
+                            + task.getTitle()
+                            + " from "
+                            + oldMember.getUser().getEmail()
+            );
+        }
+
+        if (oldMember != null
+                && task.getAssignedMember() != null
+                && !oldMember.getId().equals(task.getAssignedMember().getId())) {
+
+            activityLogService.log(
+                    helperService.getCurrentUser(),
+                    task.getBoard().getProject().getWorkspace(),
+                    ActivityAction.TASK_ASSIGNED,
+                    ActivityEntityType.TASK,
+                    task.getId(),
+                    helperService.getCurrentUser().getEmail()
+                            + " reassigned task "
+                            + task.getTitle()
+                            + " from "
+                            + oldMember.getUser().getEmail()
+                            + " to "
+                            + task.getAssignedMember().getUser().getEmail()
+            );
+        }
+
+        return mapToResponse(task);
     }
 
+    @Transactional
     @Override
     public TaskResponse updateTaskStatus(UUID taskId, TaskStatus status) {
         Task task = authorizationService.requireTaskPermission(taskId, Permissions.TASK_EDIT);
+        TaskStatus oldStatus = task.getStatus();
         task.setStatus(status);
-        return mapToResponse(taskRepo.save(task));
+        task = taskRepo.save(task);
+
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                task.getBoard().getProject().getWorkspace(),
+                ActivityAction.TASK_STATUS_CHANGED,
+                ActivityEntityType.TASK,
+                task.getId(),
+                helperService.getCurrentUser().getEmail()
+                        + " changed task "
+                        + task.getTitle()
+                        + " status from "
+                        + oldStatus
+                        + " to "
+                        + task.getStatus()
+        );
+
+        return mapToResponse(task);
     }
 
+    @Transactional
     @Override
     public TaskResponse updateBoard(UUID taskId, UUID boardId) {
         Task task = authorizationService.requireTaskPermission(taskId, Permissions.WORKSPACE_WRITE);
+        String oldBoardName = task.getBoard().getName();
         Board board = authorizationService.requireBoardPermission(boardId, Permissions.WORKSPACE_WRITE);
         if(!task.getBoard().getProject().getWorkspace().getId().equals( board.getProject().getWorkspace().getId()))
         {
             throw new InvalidOperationException("Task cannot be moved to another workspace.");
         }
         task.setBoard(board);
-        return mapToResponse(taskRepo.save(task));
+        task = taskRepo.save(task);
+
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                task.getBoard().getProject().getWorkspace(),
+                ActivityAction.TASK_MOVED,
+                ActivityEntityType.TASK,
+                task.getId(),
+                helperService.getCurrentUser().getEmail()
+                        + " moved task "
+                        + task.getTitle()
+                        + " from board "
+                        + oldBoardName
+                        + " to "
+                        + board.getName()
+        );
+
+        return mapToResponse(task);
     }
 }

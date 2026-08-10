@@ -1,5 +1,8 @@
 package com.deepanshu.backend.workspaceMember.service;
 
+import com.deepanshu.backend.activitylog.entity.ActivityAction;
+import com.deepanshu.backend.activitylog.entity.ActivityEntityType;
+import com.deepanshu.backend.activitylog.service.ActivityLogService;
 import com.deepanshu.backend.authorization.service.AuthorizationService;
 import com.deepanshu.backend.common.dto.PageResponse;
 import com.deepanshu.backend.common.exception.InvalidOperationException;
@@ -7,7 +10,6 @@ import com.deepanshu.backend.common.exception.MemberAlreadyExistsException;
 import com.deepanshu.backend.common.exception.ResourceNotFoundException;
 import com.deepanshu.backend.common.permission.Permissions;
 import com.deepanshu.backend.common.service.HelperService;
-import com.deepanshu.backend.task.repo.TaskRepo;
 import com.deepanshu.backend.user.entity.User;
 import com.deepanshu.backend.user.repo.UserRepo;
 import com.deepanshu.backend.workspaceMember.dto.AddWorkspaceMemberRequest;
@@ -29,15 +31,15 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService{
 
     private final WorkspaceMemberRepo repo;
     private final UserRepo userRepo;
-    private final TaskRepo taskRepo;
     private final AuthorizationService authorizationService;
+    private final ActivityLogService activityLogService;
     private final HelperService helperService;
 
-    public WorkspaceMemberServiceImpl(WorkspaceMemberRepo repo, UserRepo userRepo, TaskRepo taskRepo, AuthorizationService authorizationService, HelperService helperService) {
+    public WorkspaceMemberServiceImpl(WorkspaceMemberRepo repo, UserRepo userRepo, AuthorizationService authorizationService, ActivityLogService activityLogService, HelperService helperService) {
         this.repo = repo;
         this.userRepo = userRepo;
-        this.taskRepo = taskRepo;
         this.authorizationService = authorizationService;
+        this.activityLogService = activityLogService;
         this.helperService = helperService;
     }
 
@@ -102,7 +104,18 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService{
         workspaceMember.setWorkspace(currentMember.getWorkspace());
         workspaceMember.setRole(request.getRole());
         workspaceMember.setInvitedBy(currentMember.getUser());
-        return mapToResponse(repo.save(workspaceMember));
+        workspaceMember = repo.save(workspaceMember);
+
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                workspaceMember.getWorkspace(),
+                ActivityAction.MEMBER_ADDED,
+                ActivityEntityType.MEMBER,
+                workspaceMember.getId(),
+                helperService.getCurrentUser().getEmail() + " added " + workspaceMember.getUser().getEmail() + " to the workspace"
+        );
+
+        return mapToResponse(workspaceMember);
     }
 
     @Transactional
@@ -111,19 +124,47 @@ public class WorkspaceMemberServiceImpl implements WorkspaceMemberService{
         WorkspaceMember currentMember = authorizationService.requireWorkspaceMemberPermission(workspaceId, Permissions.WORKSPACE_WRITE);
         WorkspaceMember target  = repo.findByIdAndWorkspaceId(memberId, workspaceId).orElseThrow(() -> new ResourceNotFoundException("Member not found"));
         validateMemberRemoval(currentMember, target);
+
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                currentMember.getWorkspace(),
+                ActivityAction.MEMBER_REMOVED,
+                ActivityEntityType.MEMBER,
+                target.getId(),
+                helperService.getCurrentUser().getEmail() + " removed " + target.getUser().getEmail() + " from the workspace"
+        );
         repo.delete(target);
+
     }
 
+    @Transactional
     @Override
     public WorkspaceMemberResponse updateMemberRole(UUID workspaceId, UUID memberId, UpdateMemberRoleRequest request) {
         WorkspaceMember workspaceMember = authorizationService.requireWorkspaceMemberPermission(workspaceId, Permissions.OWNER_ONLY);
         WorkspaceMember target = repo.findByIdAndWorkspaceId(memberId, workspaceMember.getWorkspace().getId()).orElseThrow(() -> new ResourceNotFoundException("Member not found"));
+        WorkspaceRole oldRole = target.getRole();
         if(request.getRole()==target.getRole())
         {
             throw new InvalidOperationException("Member already has this role.");
         }
         validateRoleModification(request.getRole());
         target.setRole(request.getRole());
-        return mapToResponse(repo.save(target));
+        target = repo.save(target);
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                workspaceMember.getWorkspace(),
+                ActivityAction.MEMBER_ROLE_CHANGED,
+                ActivityEntityType.MEMBER,
+                target.getId(),
+                helperService.getCurrentUser().getEmail()
+                        + " changed "
+                        + target.getUser().getEmail()
+                        + "'s role from "
+                        + oldRole
+                        + " to "
+                        + target.getRole()
+        );
+
+        return mapToResponse(target);
     }
 }

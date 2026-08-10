@@ -1,10 +1,8 @@
-version: '3.8'
-
 services:
 
   postgres:
     image: postgres:17
-    container_name: taskflow-db
+    container_name: axiom-db
     restart: always
 
     environment:
@@ -20,7 +18,7 @@ services:
 
   backend:
     build: .
-    container_name: taskflow-api
+    container_name: axiom-api
 
     depends_on:
       - postgres
@@ -30,11 +28,26 @@ services:
 
     environment:
       SPRING_PROFILES_ACTIVE: docker
+
       SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
       SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+
+      SPRING_FLYWAY_ENABLED: ${SPRING_FLYWAY_ENABLED}
+      SPRING_FLYWAY_LOCATIONS: ${SPRING_FLYWAY_LOCATIONS}
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: ${SPRING_FLYWAY_BASELINE_ON_MIGRATE}
+
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION}
+
+      APP_CORS_ALLOWED_ORIGIN: ${APP_CORS_ALLOWED_ORIGIN}
+
+      AUTH_REFRESH_COOKIE_NAME: ${AUTH_REFRESH_COOKIE_NAME}
+      AUTH_REFRESH_COOKIE_PATH: ${AUTH_REFRESH_COOKIE_PATH}
+      AUTH_REFRESH_COOKIE_MAX_AGE_SECONDS: ${AUTH_REFRESH_COOKIE_MAX_AGE_SECONDS}
+      AUTH_REFRESH_COOKIE_HTTP_ONLY: ${AUTH_REFRESH_COOKIE_HTTP_ONLY}
+      AUTH_REFRESH_COOKIE_SECURE: ${AUTH_REFRESH_COOKIE_SECURE}
+      AUTH_REFRESH_COOKIE_SAME_SITE: ${AUTH_REFRESH_COOKIE_SAME_SITE}
 
 volumes:
   postgres-data:

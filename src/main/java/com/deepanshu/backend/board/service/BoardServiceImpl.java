@@ -1,5 +1,8 @@
 package com.deepanshu.backend.board.service;
 
+import com.deepanshu.backend.activitylog.entity.ActivityAction;
+import com.deepanshu.backend.activitylog.entity.ActivityEntityType;
+import com.deepanshu.backend.activitylog.service.ActivityLogService;
 import com.deepanshu.backend.authorization.service.AuthorizationService;
 import com.deepanshu.backend.board.dto.request.AddBoardRequest;
 import com.deepanshu.backend.board.dto.response.BoardResponse;
@@ -14,7 +17,7 @@ import com.deepanshu.backend.task.entity.TaskPriority;
 import com.deepanshu.backend.task.entity.TaskStatus;
 import com.deepanshu.backend.task.projection.TaskStatusCount;
 import com.deepanshu.backend.task.repo.TaskRepo;
-import com.deepanshu.backend.workspaceMember.entity.WorkspaceRole;
+import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,12 +33,14 @@ public class BoardServiceImpl implements BoardService{
     private final HelperService helperService;
     private final AuthorizationService authorizationService;
     private final TaskRepo taskRepo;
+    private final ActivityLogService activityLogService;
 
-    public BoardServiceImpl(BoardRepo repo, HelperService helperService, AuthorizationService authorizationService, TaskRepo taskRepo) {
+    public BoardServiceImpl(BoardRepo repo, HelperService helperService, AuthorizationService authorizationService, TaskRepo taskRepo, ActivityLogService activityLogService) {
         this.repo = repo;
         this.helperService = helperService;
         this.authorizationService = authorizationService;
         this.taskRepo = taskRepo;
+        this.activityLogService = activityLogService;
     }
 
     private BoardResponse mapToResponse(Board board)
@@ -47,13 +52,25 @@ public class BoardServiceImpl implements BoardService{
         );
     }
 
+    @Transactional
     @Override
     public BoardResponse addBoard(AddBoardRequest request, UUID projectId) {
         Project project = authorizationService.requireProjectPermission( projectId, Permissions.WORKSPACE_WRITE);
         Board board = new Board();
         board.setName(request.getName());
         board.setProject(project);
-        return mapToResponse(repo.save(board));
+        board = repo.save(board);
+
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                project.getWorkspace(),
+                ActivityAction.BOARD_CREATED,
+                ActivityEntityType.BOARD,
+                board.getId(),
+                helperService.getCurrentUser().getEmail() + " created board "+ board.getName()
+        );
+
+        return mapToResponse(board);
     }
 
     @Override
@@ -68,17 +85,37 @@ public class BoardServiceImpl implements BoardService{
         return helperService.setPageResponse(page);
     }
 
+    @Transactional
     @Override
     public BoardResponse updateBoard(AddBoardRequest request, UUID boardId) {
         Board board = authorizationService.requireBoardPermission(boardId, Permissions.WORKSPACE_WRITE);
         board.setName(request.getName());
-        return mapToResponse(repo.save(board));
+        board = repo.save(board);
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                board.getProject().getWorkspace(),
+                ActivityAction.BOARD_UPDATED,
+                ActivityEntityType.BOARD,
+                board.getId(),
+                helperService.getCurrentUser().getEmail() + " updated board "+ board.getName()
+        );
+        return mapToResponse(board);
     }
 
+    @Transactional
     @Override
     public void deleteBoard( UUID boardId) {
         Board board = authorizationService.requireBoardPermission(boardId, Permissions.WORKSPACE_WRITE);
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                board.getProject().getWorkspace(),
+                ActivityAction.BOARD_DELETED,
+                ActivityEntityType.BOARD,
+                board.getId(),
+                helperService.getCurrentUser().getEmail() + " deleted board "+ board.getName()
+        );
         repo.delete(board);
+
     }
 
     @Override

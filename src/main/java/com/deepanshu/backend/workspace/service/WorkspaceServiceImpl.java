@@ -1,9 +1,11 @@
 package com.deepanshu.backend.workspace.service;
 
+import com.deepanshu.backend.activitylog.entity.ActivityAction;
+import com.deepanshu.backend.activitylog.entity.ActivityEntityType;
+import com.deepanshu.backend.activitylog.service.ActivityLogService;
 import com.deepanshu.backend.authorization.service.AuthorizationService;
 import com.deepanshu.backend.board.repo.BoardRepo;
 import com.deepanshu.backend.common.dto.PageResponse;
-import com.deepanshu.backend.common.exception.WorkSpaceNotFoundException;
 import com.deepanshu.backend.common.service.HelperService;
 import com.deepanshu.backend.project.repo.ProjectRepo;
 import com.deepanshu.backend.task.entity.TaskPriority;
@@ -36,11 +38,12 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final TaskRepo taskRepo;
     private final WorkspaceMemberRepo workspaceMemberRepo;
     private final AuthorizationService authorizationService;
+    private final ActivityLogService activityLogService;
     private final HelperService helperService;
 
     public WorkspaceServiceImpl(WorkspaceRepo repo, ProjectRepo projectRepo,
                                 BoardRepo boardRepo, TaskRepo taskRepo, WorkspaceMemberRepo workspaceMemberRepo,
-                                AuthorizationService authorizationService,
+                                AuthorizationService authorizationService, ActivityLogService activityLogService,
                                 HelperService helperService) {
         this.repo = repo;
         this.projectRepo = projectRepo;
@@ -48,6 +51,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         this.taskRepo = taskRepo;
         this.workspaceMemberRepo = workspaceMemberRepo;
         this.authorizationService = authorizationService;
+        this.activityLogService = activityLogService;
         this.helperService = helperService;
     }
 
@@ -75,12 +79,25 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         return mapToResponse(authorizationService.requireWorkspace(workspaceId));
     }
 
+    @Transactional
     @Override
     public WorkspaceResponse updateWorkSpace(UUID workspaceId, AddWorkSpaceRequest request) {
         Workspace workspace = authorizationService.requireWorkspacePermission(workspaceId, WorkspaceRole.OWNER);
         workspace.setDescription(request.getDescription());
         workspace.setName(request.getName());
-        return mapToResponse(repo.save(workspace));
+        workspace = repo.save(workspace);
+
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                workspace,
+                ActivityAction.WORKSPACE_UPDATED,
+                ActivityEntityType.WORKSPACE,
+                workspace.getId(),
+                helperService.getCurrentUser().getEmail()
+                        + " updated workspace "
+                        + workspace.getName()
+        );
+        return mapToResponse(workspace);
     }
 
     @Transactional
@@ -96,12 +113,45 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         workspaceMember.setUser(helperService.getCurrentUser());
         workspaceMember.setRole(WorkspaceRole.OWNER);
         workspaceMemberRepo.save(workspaceMember);
+
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                workspace,
+                ActivityAction.WORKSPACE_CREATED,
+                ActivityEntityType.WORKSPACE,
+                workspace.getId(),
+                helperService.getCurrentUser().getEmail()
+                        + " created workspace "
+                        + workspace.getName()
+        );
+
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                workspace,
+                ActivityAction.MEMBER_ADDED,
+                ActivityEntityType.MEMBER,
+                workspaceMember.getId(),
+                "Added " + workspaceMember.getUser().getEmail() + " to the workspace"
+        );
         return mapToResponse(workspace);
     }
 
+    @Transactional
     @Override
     public void deleteWorkspace(UUID workspaceId) {
-        repo.delete(authorizationService.requireWorkspacePermission(workspaceId, WorkspaceRole.OWNER));
+        Workspace workspace = authorizationService.requireWorkspacePermission(workspaceId, WorkspaceRole.OWNER);
+        activityLogService.log(
+                helperService.getCurrentUser(),
+                workspace,
+                ActivityAction.WORKSPACE_DELETED,
+                ActivityEntityType.WORKSPACE,
+                workspace.getId(),
+                helperService.getCurrentUser().getEmail()
+                        + " deleted workspace "
+                        + workspace.getName()
+        );
+
+        repo.delete(workspace);
     }
 
     @Override
