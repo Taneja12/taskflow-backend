@@ -5,5 +5,6 @@ public enum ActivityEntityType {
     MEMBER,
     PROJECT,
     BOARD,
-    TASK
+    TASK,
+    COMMENT
 }

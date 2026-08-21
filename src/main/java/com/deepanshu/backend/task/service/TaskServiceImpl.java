@@ -8,6 +8,8 @@ import com.deepanshu.backend.board.entity.Board;
 import com.deepanshu.backend.common.exception.InvalidOperationException;
 import com.deepanshu.backend.common.permission.Permissions;
 import com.deepanshu.backend.common.service.HelperService;
+import com.deepanshu.backend.notification.entity.NotificationType;
+import com.deepanshu.backend.notification.service.NotificationService;
 import com.deepanshu.backend.task.dto.AddTaskRequest;
 import com.deepanshu.backend.common.dto.PageResponse;
 import com.deepanshu.backend.task.dto.TaskResponse;
@@ -17,25 +19,21 @@ import com.deepanshu.backend.task.entity.TaskStatus;
 import com.deepanshu.backend.task.repo.TaskRepo;
 import com.deepanshu.backend.workspaceMember.entity.WorkspaceMember;
 import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class TaskServiceImpl implements TaskService{
 
     private final TaskRepo taskRepo;
     private final AuthorizationService authorizationService;
     private final ActivityLogService activityLogService;
+    private final NotificationService notificationService;
     private final HelperService helperService;
-
-    public TaskServiceImpl(TaskRepo taskRepo, AuthorizationService authorizationService, ActivityLogService activityLogService, HelperService helperService) {
-        this.taskRepo = taskRepo;
-        this.authorizationService = authorizationService;
-        this.activityLogService = activityLogService;
-        this.helperService = helperService;
-    }
 
     private TaskResponse mapToResponse(Task task) {
         return new TaskResponse(
@@ -92,7 +90,7 @@ public class TaskServiceImpl implements TaskService{
                 helperService.getCurrentUser().getEmail() + " created task "+ task.getTitle()
         );
 
-        if(request.getAssignedMemberId()!=null)
+        if(assignedMember!=null)
         {
             activityLogService.log(
                     helperService.getCurrentUser(),
@@ -106,6 +104,8 @@ public class TaskServiceImpl implements TaskService{
                             + " to "
                             + task.getAssignedMember().getUser().getEmail()
             );
+
+            notificationService.notification(assignedMember.getUser(), helperService.getCurrentUser(), NotificationType.TASK_ASSIGNED, helperService.getCurrentUser().getFullName()+" assigned you a task" , null, task, null, null, null);
         }
 
         return mapToResponse(task);
@@ -173,6 +173,7 @@ public class TaskServiceImpl implements TaskService{
                             + " to "
                             + task.getAssignedMember().getUser().getEmail()
             );
+            notificationService.notification(task.getAssignedMember().getUser(), helperService.getCurrentUser(), NotificationType.TASK_ASSIGNED, helperService.getCurrentUser().getFullName()+" assigned you a task" , null, task, null, null, null);
         }
 
         if(oldMember!=null && task.getAssignedMember()==null)
@@ -209,6 +210,8 @@ public class TaskServiceImpl implements TaskService{
                             + " to "
                             + task.getAssignedMember().getUser().getEmail()
             );
+            notificationService.notification(task.getAssignedMember().getUser(), helperService.getCurrentUser(), NotificationType.TASK_ASSIGNED, helperService.getCurrentUser().getFullName()+" assigned you a task" ,null, task, null,null, null);
+
         }
 
         return mapToResponse(task);
@@ -267,6 +270,9 @@ public class TaskServiceImpl implements TaskService{
                         + " to "
                         + board.getName()
         );
+
+        notificationService.notification(task.getAssignedMember().getUser(), helperService.getCurrentUser(), NotificationType.TASK_UPDATED, helperService.getCurrentUser().getFullName()+" moved the task to board " + task.getBoard().getName() ,null, task, null, null, null);
+
 
         return mapToResponse(task);
     }

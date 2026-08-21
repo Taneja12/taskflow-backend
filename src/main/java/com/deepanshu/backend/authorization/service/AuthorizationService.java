@@ -2,38 +2,35 @@ package com.deepanshu.backend.authorization.service;
 
 import com.deepanshu.backend.board.entity.Board;
 import com.deepanshu.backend.board.repo.BoardRepo;
+import com.deepanshu.backend.comment.entity.Comment;
+import com.deepanshu.backend.comment.repo.CommentRepo;
 import com.deepanshu.backend.common.exception.*;
 import com.deepanshu.backend.common.service.HelperService;
 import com.deepanshu.backend.project.entity.Project;
 import com.deepanshu.backend.project.repo.ProjectRepo;
 import com.deepanshu.backend.task.entity.Task;
 import com.deepanshu.backend.task.repo.TaskRepo;
+import com.deepanshu.backend.user.entity.User;
 import com.deepanshu.backend.workspace.entity.Workspace;
 import com.deepanshu.backend.workspaceMember.entity.WorkspaceMember;
 import com.deepanshu.backend.workspaceMember.entity.WorkspaceRole;
 import com.deepanshu.backend.workspaceMember.repo.WorkspaceMemberRepo;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Set;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class AuthorizationService {
 
     private final WorkspaceMemberRepo workspaceMemberRepo;
     private final ProjectRepo projectRepo;
     private final BoardRepo boardRepo;
     private final TaskRepo taskRepo;
+    private final CommentRepo commentRepo;
     private final HelperService helperService;
-
-    public AuthorizationService( WorkspaceMemberRepo workspaceMemberRepo, ProjectRepo projectRepo,
-                                BoardRepo boardRepo, TaskRepo taskRepo, HelperService helperService) {
-        this.workspaceMemberRepo = workspaceMemberRepo;
-        this.projectRepo = projectRepo;
-        this.boardRepo = boardRepo;
-        this.taskRepo = taskRepo;
-        this.helperService = helperService;
-    }
 
     // Access to the workspace
     public WorkspaceMember requireWorkspaceMember(UUID workspaceId)
@@ -115,4 +112,21 @@ public class AuthorizationService {
         return workspaceMemberRepo.findByIdAndWorkspaceId(memberId, workspaceId).orElseThrow(()-> new ResourceNotFoundException("Member not found"));
     }
 
+    public Comment requireComment(UUID commentId)
+    {
+        Comment comment = commentRepo.findById(commentId).orElseThrow(() -> new CommentNotFoundException("Comment not found"));
+        requireTask(comment.getTask().getId());
+        return comment;
+    }
+
+    public Comment requireCommentPermission(UUID commentId, WorkspaceRole ...roles) {
+        Comment comment = requireComment(commentId);
+        User currentUser = helperService.getCurrentUser();
+
+        if (comment.getUser().getId().equals(currentUser.getId())) {
+            return comment;
+        }
+        requireTaskPermission(comment.getTask().getId(), roles);
+        return comment;
+    }
 }
