@@ -3,6 +3,7 @@ package com.deepanshu.backend.notification.service;
 import com.deepanshu.backend.board.entity.Board;
 import com.deepanshu.backend.comment.entity.Comment;
 import com.deepanshu.backend.common.dto.PageResponse;
+import com.deepanshu.backend.common.exception.ResourceNotFoundException;
 import com.deepanshu.backend.common.service.HelperService;
 import com.deepanshu.backend.notification.dto.NotificationContext;
 import com.deepanshu.backend.notification.dto.NotificationDetailResponse;
@@ -178,7 +179,7 @@ public class NotificationServiceImpl implements NotificationService{
 
     @Override
     public PageResponse<NotificationResponse> getNotifications(Pageable pageable) {
-        Page<NotificationResponse> page= notificationRepo.getByRecipientId(helperService.getCurrentUser().getId(), pageable).map(this::mapToResponse);
+        Page<NotificationResponse> page = notificationRepo.getByRecipientId(helperService.getCurrentUser().getId(), pageable).map(this::mapToResponse);
         return helperService.setPageResponse(page);
     }
 
@@ -200,13 +201,14 @@ public class NotificationServiceImpl implements NotificationService{
     @Transactional(readOnly = true)
     @Override
     public NotificationDetailResponse getNotificationById(UUID notificationId) {
-        return mapToDetailResponse(notificationRepo.getByIdAndRecipientId(notificationId, helperService.getCurrentUser().getId()));
+        Notification notification = notificationRepo.getByIdAndRecipientId(notificationId, helperService.getCurrentUser().getId()).orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
+        return mapToDetailResponse(notification);
     }
 
     @Transactional
     @Override
     public NotificationDetailResponse markAsReadNotification(UUID notificationId) {
-        Notification notification = notificationRepo.getByIdAndRecipientId(notificationId, helperService.getCurrentUser().getId());
+        Notification notification = notificationRepo.getByIdAndRecipientId(notificationId, helperService.getCurrentUser().getId()).orElseThrow(() -> new ResourceNotFoundException("Notification not found"));
         notification.setReadAt(LocalDateTime.now());
         return mapToDetailResponse(notification);
     }
