@@ -7,11 +7,13 @@ import com.deepanshu.backend.authorization.service.AuthorizationService;
 import com.deepanshu.backend.board.repo.BoardRepo;
 import com.deepanshu.backend.common.dto.PageResponse;
 import com.deepanshu.backend.common.service.HelperService;
+import com.deepanshu.backend.notification.event.WorkspaceCreatedEvent;
 import com.deepanshu.backend.project.repo.ProjectRepo;
 import com.deepanshu.backend.task.entity.TaskPriority;
 import com.deepanshu.backend.task.entity.TaskStatus;
 import com.deepanshu.backend.task.projection.TaskStatusCount;
 import com.deepanshu.backend.task.repo.TaskRepo;
+import com.deepanshu.backend.user.entity.User;
 import com.deepanshu.backend.workspace.dto.response.WorkspaceStatisticsResponse;
 import com.deepanshu.backend.workspace.dto.request.AddWorkSpaceRequest;
 import com.deepanshu.backend.workspace.dto.response.WorkspaceResponse;
@@ -21,6 +23,7 @@ import com.deepanshu.backend.workspaceMember.entity.WorkspaceMember;
 import com.deepanshu.backend.workspaceMember.entity.WorkspaceRole;
 import com.deepanshu.backend.workspaceMember.repo.WorkspaceMemberRepo;
 import jakarta.transaction.Transactional;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -39,12 +42,13 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final WorkspaceMemberRepo workspaceMemberRepo;
     private final AuthorizationService authorizationService;
     private final ActivityLogService activityLogService;
+    private final ApplicationEventPublisher eventPublisher;
     private final HelperService helperService;
 
     public WorkspaceServiceImpl(WorkspaceRepo repo, ProjectRepo projectRepo,
                                 BoardRepo boardRepo, TaskRepo taskRepo, WorkspaceMemberRepo workspaceMemberRepo,
                                 AuthorizationService authorizationService, ActivityLogService activityLogService,
-                                HelperService helperService) {
+                                ApplicationEventPublisher eventPublisher, HelperService helperService) {
         this.repo = repo;
         this.projectRepo = projectRepo;
         this.boardRepo = boardRepo;
@@ -52,6 +56,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
         this.workspaceMemberRepo = workspaceMemberRepo;
         this.authorizationService = authorizationService;
         this.activityLogService = activityLogService;
+        this.eventPublisher = eventPublisher;
         this.helperService = helperService;
     }
 
@@ -104,13 +109,14 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     @Override
     public WorkspaceResponse createWorkspace(AddWorkSpaceRequest request) {
         Workspace workspace = new Workspace();
-        workspace.setOwner(helperService.getCurrentUser());
+        User currUser = helperService.getCurrentUser();
+        workspace.setOwner(currUser);
         workspace.setName(request.getName());
         workspace.setDescription(request.getDescription());
         workspace = repo.save(workspace);
         WorkspaceMember workspaceMember = new WorkspaceMember();
         workspaceMember.setWorkspace(workspace);
-        workspaceMember.setUser(helperService.getCurrentUser());
+        workspaceMember.setUser(currUser);
         workspaceMember.setRole(WorkspaceRole.OWNER);
         workspaceMemberRepo.save(workspaceMember);
 
@@ -120,19 +126,21 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                 ActivityAction.WORKSPACE_CREATED,
                 ActivityEntityType.WORKSPACE,
                 workspace.getId(),
-                helperService.getCurrentUser().getEmail()
+                currUser.getEmail()
                         + " created workspace "
                         + workspace.getName()
         );
 
         activityLogService.log(
-                helperService.getCurrentUser(),
+                currUser,
                 workspace,
                 ActivityAction.MEMBER_ADDED,
                 ActivityEntityType.MEMBER,
                 workspaceMember.getId(),
                 "Added " + workspaceMember.getUser().getEmail() + " to the workspace"
         );
+
+        eventPublisher.publishEvent(new WorkspaceCreatedEvent(workspace.getName(), currUser.getFullName(), currUser.getEmail()));
         return mapToResponse(workspace);
     }
 
