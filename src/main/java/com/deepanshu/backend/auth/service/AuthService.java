@@ -12,4 +12,8 @@ public interface AuthService {
     LoginResult refresh(String refreshToken);
 
     void logout(String refreshToken);
+
+    void forget_password(String email);
+
+    void reset_password(String newPassword, String token);
 }

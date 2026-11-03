@@ -1,6 +1,7 @@
 package com.deepanshu.backend.notification.service;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -51,6 +52,28 @@ public class EmailService {
                         + "You can now start organizing your projects "
                         + "and tasks in TaskFlow.\n\n"
                         + "Regards,\nTaskFlow Team"
+        );
+
+        mailSender.send(message);
+    }
+
+    public void sendPasswordResetEmail(
+            String recipient,
+            String resetLink
+    )
+    {
+        SimpleMailMessage message = new SimpleMailMessage();
+
+        message.setTo(recipient);
+        message.setFrom(senderEmail);
+        message.setSubject("Password Reset Request");
+        message.setText(
+                "Hello,\n\n" +
+                        "We received a request to reset your password.\n\n" +
+                        "Click the link below to reset your password:\n" +
+                        resetLink + "\n\n" +
+                        "This link will expire in 30 minutes.\n" +
+                        "If you didn't request this, please ignore this email."
         );
 
         mailSender.send(message);

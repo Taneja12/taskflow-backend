@@ -1,22 +1,20 @@
 package com.deepanshu.backend.auth.controller;
 
 
-import com.deepanshu.backend.auth.dto.AuthResponse;
-import com.deepanshu.backend.auth.dto.LoginRequest;
-import com.deepanshu.backend.auth.dto.LoginResult;
-import com.deepanshu.backend.auth.dto.RegisterRequest;
+import com.deepanshu.backend.auth.dto.*;
 import com.deepanshu.backend.auth.service.AuthService;
 import com.deepanshu.backend.common.exception.InvalidRefreshTokenException;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
@@ -27,6 +25,7 @@ import java.time.Duration;
 @Tag(name = "Authentication")
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     @Value("${auth.refresh-cookie.name}")
     private String refreshCookieName;
 
@@ -121,10 +120,26 @@ public class AuthController {
                 .build();
     }
 
+    @PostMapping("/forget_password")
+    public ResponseEntity<Void> forget_password(@RequestBody ForgetPasswordRequest request)
+    {
+        authService.forget_password(request.getEmail());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reset_password")
+    public ResponseEntity<Void> reset_password(@RequestBody ResetPasswordRequest request, @RequestParam String token)
+    {
+        authService.reset_password(request.getPassword(), token);
+        return ResponseEntity.ok().build();
+    }
+
 //    @GetMapping("/greet")
 //    public String greet()
 //    {
 //        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 //        return "Hello Brother " + authentication.getName();
 //    }
+
+
 }
