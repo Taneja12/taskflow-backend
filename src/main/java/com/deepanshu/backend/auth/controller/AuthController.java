@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -132,6 +133,13 @@ public class AuthController {
     {
         authService.reset_password(request.getPassword(), token);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/verify_token")
+    public ResponseEntity<?> verify_token(@RequestParam String token)
+    {
+        authService.validate_reset_token(token);
+        return ResponseEntity.ok(Map.of("message", "valid token"));
     }
 
 //    @GetMapping("/greet")

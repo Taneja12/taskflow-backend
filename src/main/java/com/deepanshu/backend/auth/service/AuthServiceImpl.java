@@ -1,15 +1,13 @@
 package com.deepanshu.backend.auth.service;
 
-import com.deepanshu.backend.auth.dto.AuthResponse;
-import com.deepanshu.backend.auth.dto.LoginRequest;
-import com.deepanshu.backend.auth.dto.LoginResult;
-import com.deepanshu.backend.auth.dto.RegisterRequest;
+import com.deepanshu.backend.auth.dto.*;
 import com.deepanshu.backend.auth.entity.PasswordResetToken;
 import com.deepanshu.backend.auth.entity.RefreshToken;
 import com.deepanshu.backend.auth.repo.PasswordResetTokenRepo;
 import com.deepanshu.backend.common.exception.AccountBlockedException;
 import com.deepanshu.backend.common.exception.EmailAlreadyExistsException;
 import com.deepanshu.backend.common.exception.InvalidCredentialsException;
+import com.deepanshu.backend.common.exception.InvalidOperationException;
 import com.deepanshu.backend.common.security.JwtService;
 import com.deepanshu.backend.notification.service.EmailService;
 import com.deepanshu.backend.user.entity.AccountStatus;
@@ -163,16 +161,16 @@ public class AuthServiceImpl implements AuthService{
         PasswordResetToken resetToken =
                 passwordResetTokenRepo.findByTokenHash(tokenHash)
                         .orElseThrow(() ->
-                                new RuntimeException("Invalid password reset token"));
+                                new InvalidOperationException("Invalid password reset token"));
 
         // 3. Check whether token is already used
         if (resetToken.isUsed()) {
-            throw new RuntimeException("Password reset token already used");
+            throw new InvalidOperationException("Password reset token already used");
         }
 
         // 4. Check token expiry
         if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Password reset token has expired");
+            throw new InvalidOperationException("Password reset token has expired");
         }
 
         // 5. Get associated user
@@ -190,6 +188,27 @@ public class AuthServiceImpl implements AuthService{
         passwordResetTokenRepo.save(resetToken);
     }
 
+    @Override
+    public void validate_reset_token(String token){
+        String tokenHash = hashToken(token);
+
+        // 2. Find token in database
+        PasswordResetToken resetToken =
+                passwordResetTokenRepo.findByTokenHash(tokenHash)
+                        .orElseThrow(() ->
+                                new InvalidOperationException("Invalid password reset token"));
+
+        // 3. Check whether token is already used
+        if (resetToken.isUsed()) {
+            throw new InvalidOperationException("Password reset token already used");
+        }
+
+        // 4. Check token expiry
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            throw new InvalidOperationException("Password reset token has expired");
+        }
+
+    }
 
     private String hashToken(String token) {
         try {

@@ -1,9 +1,6 @@
 package com.deepanshu.backend.auth.service;
 
-import com.deepanshu.backend.auth.dto.AuthResponse;
-import com.deepanshu.backend.auth.dto.LoginRequest;
-import com.deepanshu.backend.auth.dto.LoginResult;
-import com.deepanshu.backend.auth.dto.RegisterRequest;
+import com.deepanshu.backend.auth.dto.*;
 
 public interface AuthService {
     AuthResponse register(RegisterRequest request);
@@ -16,4 +13,6 @@ public interface AuthService {
     void forget_password(String email);
 
     void reset_password(String newPassword, String token);
+
+    void validate_reset_token(String token);
 }
